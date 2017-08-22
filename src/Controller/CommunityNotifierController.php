@@ -26,7 +26,6 @@ class CommunityNotifierController extends ActionLinkController {
    * {@inheritdoc}
    */
   public function flag(FlagInterface $flag, $entity_id, Request $request) {
-    //drupal_set_message('flag'.json_encode());
     $this->communityNotifier->flag($flag->id(), $entity_id);
     return parent::flag($flag, $entity_id, $request);
   }
@@ -34,8 +33,7 @@ class CommunityNotifierController extends ActionLinkController {
    * {@inheritdoc}
    */
   public function unflag(FlagInterface $flag, $entity_id, Request $request) {
-    drupal_set_message('unflag in community notifier');
-   // $this->communityNotifierServiceInterface->flag();
+    $this->communityNotifier->unflag($flag->id(), $entity_id);
     return parent::unflag($flag, $entity_id, $request);
   }
   /**
