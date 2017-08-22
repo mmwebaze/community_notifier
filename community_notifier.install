@@ -1,0 +1,13 @@
+<?php
+/**
+ * Implements hook_install.
+ */
+function dhis_install() {
+  //Adds extra field called Frequency to the flagging table created by the Flags module.
+  // The frequency field can take on the following values immediately, daily or weekly.
+  /*\Drupal::service('database')->schema()->addField('flagging', 'frequency', [
+    'type' => 'varchar',
+    'length' => 11,
+    'not null' => TRUE,'default' => ''
+  ]);*/
+}
