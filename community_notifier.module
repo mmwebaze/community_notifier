@@ -36,33 +36,54 @@ function community_notifier_theme() {
     ],
   ];
 }
-
-function community_notifier_mail($key, &$message, $params){
+/**
+ * Implements hook_theme().
+ */
+function community_notifier_mail($key, &$message, $params) {
   $options = array(
     'langcode' => $message['langcode'],
   );
 
-  switch ($key){
-    case 'node_update_alert':
+  switch ($key) {
+    case 'comment_insert_alert':
       $message['from'] = \Drupal::config('system.site')->get('mail');
-      $message['subject'] = t('Ticket created: @title', array('@title' => $params['node_title']), $options);
-      $message['body'][] = Html::escape($params['message']);
+      $message['subject'] = t('@title', array('@title' => $params['subject']), $options);
+      $message['body'][] = $params['message'];
       break;
   }
 }
-
-function community_notifier_comment_update(CommentInterface $comment) {
-  drupal_set_message($comment->getEntityTypeId().' by michael mwebaze');
+/**
+ * Implements hook_ENTITY_TYPE_insert().
+ */
+function community_notifier_comment_insert(CommentInterface $comment) {
+  $commentedEntityId = $comment->getCommentedEntityId();
+  $notificationEntities = \Drupal::service('community_notifier.nodeflags')->getNotificationEntities($commentedEntityId);
+  foreach ($notificationEntities as $notificationEntity) {
+    //var_dump($notificationEntity->getEntityId().' -- '.$commentedEntityId.' - '.$notificationEntity->getOwnerId().' - '); die();
+    //var_dump($notificationEntity->getOwner()->getEmail()); die();
+    if ($notificationEntity->getFrequency() == 'immediately') {
+      community_notifier_emailer('community_notifier', 'comment_insert_alert', $notificationEntity->getOwner()->getEmail(),
+        $comment->getSubject(), $comment->get('comment_body')->value, $notificationEntity->getOwner()->getUsername());
+    }
+  }
 }
 
-function community_notifier_form_user_form_alter(&$form, FormStateInterface $form_state, $form_id) {
-  $userFormObject = $form_state->getFormObject()->getEntity();
-  $user = \Drupal\user\Entity\User::load($userFormObject->id());
-
-
-  $form['terms_of_use'] = array(
-    '#type' => 'checkbox',
-    '#title' => t('I agree with the '.$user->getDisplayName().' website\'s terms and conditions.'),
-    '#required' => TRUE,
-  );
+/**
+ * @param $module see hook_mail documentation.
+ * @param $key see hook_mail documentation.
+ * @param $to see hook_mail documentation.
+ * @param $subject see hook_mail documentation.
+ * @param $message see hook_mail documentation.
+ * @param $username drupal username of entity receiving the email.
+ */
+function community_notifier_emailer($module, $key, $to, $subject, $message, $username) {
+  $mailManager = \Drupal::service('plugin.manager.mail');
+  $params['message'] = $message;
+  $params['subject'] = $subject;
+  $langcode = \Drupal::currentUser()->getPreferredLangcode();
+  $send = true;
+  $result = $mailManager->mail($module, $key, $to, $langcode, $params, NULL, $send);
+  if ($result['result'] !== true) {
+    \Drupal::logger('community_notifier')->error(t('There was a problem sending an email to user '.$username));
+  }
 }

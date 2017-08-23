@@ -60,4 +60,20 @@ class CommunityNotifierService implements CommunityNotifierServiceInterface {
       }
     }
   }
+
+  /**
+   * @param $flaggedEntityId
+   * @return an array of CommunityNotifierFrequency entities with a specified flaggedEntityId.
+   */
+  public function getNotificationEntities($flaggedEntityId){
+    $notifierEntities = $this->entityTypeManager->getStorage('community_notifier_frequency')->loadMultiple();
+    $notificationEntities = array();
+    foreach ($notifierEntities as $notifierEntity){
+      if ($notifierEntity->getEntityId() == $flaggedEntityId){
+        array_push($notificationEntities, $notifierEntity);
+      }
+    }
+
+    return $notificationEntities;
+  }
 }
