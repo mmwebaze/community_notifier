@@ -195,7 +195,7 @@ class CommunityNotifierFrequency extends ContentEntityBase implements CommunityN
 
     $fields['flag_id'] = BaseFieldDefinition::create('string')
       ->setLabel(t('Flag Id'))
-      ->setDescription(t('The Community notifier flag id.'))
+      ->setDescription(t('The flag id.'))
       ->setSettings([
         'max_length' => 50,
         'text_processing' => 0,
@@ -215,8 +215,8 @@ class CommunityNotifierFrequency extends ContentEntityBase implements CommunityN
       ->setDisplayConfigurable('view', TRUE);
 
     $fields['entity_id'] = BaseFieldDefinition::create('integer')
-      ->setLabel(t('Flag entity Id'))
-      ->setDescription(t('The Flag entity id.'))
+      ->setLabel(t('Flagged Entity Id'))
+      ->setDescription(t('The flagged entity id.'))
       ->setSettings([
         'max_length' => 50,
         'text_processing' => 0,
@@ -232,6 +232,27 @@ class CommunityNotifierFrequency extends ContentEntityBase implements CommunityN
         'weight' => -4,
       ])
       ->setReadOnly(TRUE)
+      ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('view', TRUE);
+
+    $fields['entity_name'] = BaseFieldDefinition::create('string')
+      ->setLabel(t('Entity Name'))
+      ->setDescription(t('The flagged entity name.'))
+      ->setSettings([
+        'max_length' => 50,
+        'text_processing' => 0,
+      ])
+      ->setReadOnly(TRUE)
+      ->setDefaultValue('')
+      ->setDisplayOptions('view', [
+        'label' => 'above',
+        'type' => 'string',
+        'weight' => -4,
+      ])
+      ->setDisplayOptions('form', [
+        'type' => 'string_textfield',
+        'weight' => -4,
+      ])
       ->setDisplayConfigurable('form', TRUE)
       ->setDisplayConfigurable('view', TRUE);
 
@@ -277,11 +298,11 @@ class CommunityNotifierFrequency extends ContentEntityBase implements CommunityN
   public function getFrequency() {
     return $this->get('frequency')->value;
   }
-  public function setEntityId($entity_id){
+  public function setFlaggedEntityId($entity_id){
     $this->set('entity_id', $entity_id);
     return $this;
   }
-  public function getEntityId() {
+  public function getFlaggedEntityId() {
     return $this->get('entity_id')->value;
   }
   public function setFlagId($flag_id){
@@ -290,5 +311,12 @@ class CommunityNotifierFrequency extends ContentEntityBase implements CommunityN
   }
   public function getFlagId() {
     return $this->get('flag_id')->value;
+  }
+  public function setFlaggedEntityName($entity_name){
+    $this->set('entity_name', $entity_name);
+    return $this;
+  }
+  public function getFlaggedEntityName() {
+    return $this->get('entity_name')->value;
   }
 }

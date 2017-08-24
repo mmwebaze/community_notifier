@@ -7,8 +7,7 @@
 
 use Drupal\Core\Routing\RouteMatchInterface;
 use Drupal\comment\CommentInterface;
-use Drupal\Component\Utility\Html;
-use Drupal\Core\Form\FormStateInterface;
+use \Drupal\Core\Form\FormStateInterface;
 
 /**
  * Implements hook_help().
@@ -58,10 +57,11 @@ function community_notifier_mail($key, &$message, $params) {
 function community_notifier_comment_insert(CommentInterface $comment) {
   $commentedEntityId = $comment->getCommentedEntityId();
   $notificationEntities = \Drupal::service('community_notifier.nodeflags')->getNotificationEntities($commentedEntityId);
+  $currentUser = \Drupal::currentUser()->getEmail();
   foreach ($notificationEntities as $notificationEntity) {
     //var_dump($notificationEntity->getEntityId().' -- '.$commentedEntityId.' - '.$notificationEntity->getOwnerId().' - '); die();
     //var_dump($notificationEntity->getOwner()->getEmail()); die();
-    if ($notificationEntity->getFrequency() == 'immediately') {
+    if ($notificationEntity->getFrequency() == 'immediately' && $currentUser != $notificationEntity->getOwner()->getEmail()) {
       community_notifier_emailer('community_notifier', 'comment_insert_alert', $notificationEntity->getOwner()->getEmail(),
         $comment->getSubject(), $comment->get('comment_body')->value, $notificationEntity->getOwner()->getUsername());
     }
@@ -86,4 +86,26 @@ function community_notifier_emailer($module, $key, $to, $subject, $message, $use
   if ($result['result'] !== true) {
     \Drupal::logger('community_notifier')->error(t('There was a problem sending an email to user '.$username));
   }
+}
+/**
+ * Implements hook_form_alter().
+ */
+function community_notifier_form_alter(&$form, FormStateInterface $form_state, $form_id) {
+  if ($form_id == 'community_notifier_frequency_edit_form'){
+    $form['name']['#disabled'] = TRUE;
+    $form['flag_id']['#disabled'] = TRUE;
+    $form['entity_id']['#disabled'] = TRUE;
+    $form['entity_name']['#disabled'] = TRUE;
+    $dropdown_array = [
+      'immediately' => 'immediately',
+      'daily' => 'daily',
+      'weekly' => 'weekly'
+    ];
+    $form['frequency']['widget'][0]['value'] = array(
+      '#type' => 'select',
+      '#default_value' => '1',
+      '#options' => $dropdown_array,
+    );
+  }
+
 }

@@ -46,16 +46,17 @@ class CommunityNotifierService implements CommunityNotifierServiceInterface {
   public function flag($flagId, $flaggedEntityId){
     CommunityNotifierFrequency::create([
       'uid' => $this->currentUser->id(),
-      'label' => '',
+      'name' => $this->currentUser->getDisplayName(),
       'flag_id' => $flagId,
       'entity_id' => $flaggedEntityId,
+      'entity_name' => $this->getEntityById($flaggedEntityId)->label(),
     ])->save();
   }
   public function unflag($flagId, $flaggedEntityId){
     $notifierEntities = $this->entityTypeManager->getStorage('community_notifier_frequency')->loadMultiple();
 
     foreach ($notifierEntities as $notifierEntity){
-      if ($notifierEntity->getFlagId() == $flagId && $notifierEntity->getEntityId() == $flaggedEntityId && $notifierEntity->getOwnerId() == $this->currentUser->id()){
+      if ($notifierEntity->getFlagId() == $flagId && $notifierEntity->getFlaggedEntityId() == $flaggedEntityId && $notifierEntity->getOwnerId() == $this->currentUser->id()){
         $this->entityTypeManager->getStorage('community_notifier_frequency')->delete([$notifierEntity]);
       }
     }
@@ -69,11 +70,16 @@ class CommunityNotifierService implements CommunityNotifierServiceInterface {
     $notifierEntities = $this->entityTypeManager->getStorage('community_notifier_frequency')->loadMultiple();
     $notificationEntities = array();
     foreach ($notifierEntities as $notifierEntity){
-      if ($notifierEntity->getEntityId() == $flaggedEntityId){
+      if ($notifierEntity->getFlaggedEntityId() == $flaggedEntityId){
         array_push($notificationEntities, $notifierEntity);
       }
     }
 
     return $notificationEntities;
+  }
+  public function getEntityById($nodeId, $enityType = 'node'){
+    $entities = $this->entityTypeManager->getStorage($enityType)->loadMultiple([$nodeId]);
+
+    return current($entities);
   }
 }

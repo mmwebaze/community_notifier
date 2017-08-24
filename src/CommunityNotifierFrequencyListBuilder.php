@@ -20,8 +20,8 @@ class CommunityNotifierFrequencyListBuilder extends EntityListBuilder {
   public function buildHeader() {
     $header['id'] = $this->t('notifier freq ID');
     $header['name'] = $this->t('Name');
-    $header['flag_id'] = $this->t('flag_id');
-    $header['entity_id'] = $this->t('entity_id');
+    $header['flag id'] = $this->t('flag_id');
+    $header['entity name'] = $this->t('entity_name');
     $header['frequency'] = $this->t('frequency');
     return $header + parent::buildHeader();
   }
@@ -38,7 +38,7 @@ class CommunityNotifierFrequencyListBuilder extends EntityListBuilder {
       ['community_notifier_frequency' => $entity->id()]
     );
     $row['flag_id'] = $entity->getFlagId();
-    $row['entity_id'] = $entity->getEntityId();
+    $row['entity_name'] = $entity->getFlaggedEntityName();
     $row['frequency'] = $entity->getFrequency();
     return $row + parent::buildRow($entity);
   }
