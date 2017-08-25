@@ -53,12 +53,15 @@ class CommunityNotifierService implements CommunityNotifierServiceInterface {
     ])->save();
   }
   public function unflag($flagId, $flaggedEntityId){
-    $notifierEntities = $this->entityTypeManager->getStorage('community_notifier_frequency')->loadMultiple();
+    $storage = $this->entityTypeManager->getStorage('community_notifier_frequency');
+    $ids = $storage->getQuery()
+      ->condition('entity_id', $flaggedEntityId, '=')
+      ->condition('flag_id', $flagId, '=')
+      ->condition('user_id', $this->currentUser->id(), '=')
+      ->execute();
 
-    foreach ($notifierEntities as $notifierEntity){
-      if ($notifierEntity->getFlagId() == $flagId && $notifierEntity->getFlaggedEntityId() == $flaggedEntityId && $notifierEntity->getOwnerId() == $this->currentUser->id()){
-        $this->entityTypeManager->getStorage('community_notifier_frequency')->delete([$notifierEntity]);
-      }
+    foreach ($storage->loadMultiple($ids) as $entity){
+      $entity->delete();
     }
   }
 
@@ -66,20 +69,34 @@ class CommunityNotifierService implements CommunityNotifierServiceInterface {
    * @param $flaggedEntityId
    * @return an array of CommunityNotifierFrequency entities with a specified flaggedEntityId.
    */
-  public function getNotificationEntities($flaggedEntityId){
-    $notifierEntities = $this->entityTypeManager->getStorage('community_notifier_frequency')->loadMultiple();
-    $notificationEntities = array();
-    foreach ($notifierEntities as $notifierEntity){
-      if ($notifierEntity->getFlaggedEntityId() == $flaggedEntityId){
-        array_push($notificationEntities, $notifierEntity);
-      }
-    }
+  public function getNotificationEntitiesById($flaggedEntityId, $ownerId){
+    $storage = $this->entityTypeManager->getStorage('community_notifier_frequency');
+    $ids = $storage->getQuery()
+      ->condition('entity_id', $flaggedEntityId, '=')
+      ->condition('user_id', $ownerId, '!=')
+      ->execute();
+    $notifierEntities = $storage->loadMultiple($ids);
 
-    return $notificationEntities;
+    return $notifierEntities;
   }
   public function getEntityById($nodeId, $enityType = 'node'){
     $entities = $this->entityTypeManager->getStorage($enityType)->loadMultiple([$nodeId]);
 
     return current($entities);
+  }
+
+  /**
+   * @param $frequency (immediate, daily or weekly)
+   * @return an array of CommunityNotifierFrequency entities with a specified frequency.
+   */
+  public function getNotificationEntitiesByFrequency($frequency, $condition = '='){
+
+    $storage = $this->entityTypeManager->getStorage('community_notifier_frequency');
+    $ids = $storage->getQuery()
+      ->condition('frequency', $frequency, $condition)
+      ->execute();
+    $notifierEntities = $storage->loadMultiple($ids);
+
+    return $notifierEntities;
   }
 }
