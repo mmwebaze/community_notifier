@@ -2,6 +2,7 @@
 
 namespace Drupal\community_notifier;
 use Drupal\community_notifier\Entity\CommunityNotifierFrequency;
+use Drupal\community_notifier\Util\CommunityNotifierUtility;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\flag\FlagService;
@@ -98,5 +99,49 @@ class CommunityNotifierService implements CommunityNotifierServiceInterface {
     $notifierEntities = $storage->loadMultiple($ids);
 
     return $notifierEntities;
+  }
+
+  /**
+   * @param $targetId
+   * @param $frequency
+   * @return \Drupal\Core\Entity\EntityInterface[]
+   */
+  public function getCommentsForNotification($targetId, $frequency){
+    $range = CommunityNotifierUtility::frequencyDateRange($frequency);
+    $storage = $this->entityTypeManager->getStorage('comment');
+    $ids = $storage->getQuery()
+      ->condition('entity_id', $targetId, '=')
+      ->condition('created', $range, 'BETWEEN')
+      ->range(0, 5)
+      ->execute();
+    $comments = $storage->loadMultiple($ids);
+
+    return $comments;
+  }
+
+  /**
+   * @return array of comments subscribed to by different users
+   */
+  public function getComments(){
+    $notificationEntities = $this->getNotificationEntitiesByFrequency('immediately', '<>');
+    $comments = [];
+    foreach ($notificationEntities as $notificationEntity){
+      $notificationEntityId = $notificationEntity->id();
+      $targetId = $notificationEntity->getFlaggedEntityId();
+      $frequency = $notificationEntity->getFrequency();
+      $notificationComments = $this->getCommentsForNotification($targetId, $frequency);
+      $tempComments = [];
+      foreach ($notificationComments as $notificationComment){
+        $tempComments['subject'] = $notificationComment->getSubject();
+        $tempComments['body'] = $notificationComment->get('comment_body')->value;
+      }
+      $comments[$notificationEntityId] = [
+        'frequency' => $frequency,
+        'email' => $notificationEntity->getOwner()->getEmail(),
+        //'comments' => $this->getCommentsForNotification($targetId, $frequency),
+        'comments' => $tempComments,
+      ];
+    }
+    return $comments;
   }
 }

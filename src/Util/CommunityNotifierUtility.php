@@ -15,4 +15,22 @@ class CommunityNotifierUtility {
     }
     return FALSE;
   }
+
+  /**
+   * @param $frequency (daily, weekly)
+   * @return array of date time range
+   */
+  public static function frequencyDateRange($frequency){
+    $end = strtotime(date('Y-m-d 23:59:59', strtotime('-8 days'))); //change to -1..-8 added for testing purposes only
+    if ($frequency == 'daily'){
+      $start = strtotime(date('Y-m-d 00:00:00', strtotime('-8 days'))); //change to -1
+
+      return [$start, $end];
+    }
+    else{
+      $start = strtotime(date('Y-m-d 00:00:00', strtotime('-7 days')));
+
+      return [$start, $end];
+    }
+  }
 }
