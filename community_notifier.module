@@ -117,16 +117,20 @@ function community_notifier_form_alter(&$form, FormStateInterface $form_state, $
     );
   }
 }
-/*
-function community_notifier_comment_update(CommentInterface $comment) {
-  $data['to'] = 'amacevitt@drupal.local';
+
+function communityNnotifierEmailQueue($to, $subject, $message) {
+  /*$data['to'] = 'amacevitt@drupal.local';
   $data['subject'] = 'Testing queue system';
-  $data['message'] = 'This is message of testing';
+  $data['message'] = 'This is message of testing';*/
+  $data['to'] = $to;
+  $data['subject'] = $subject;
+  $data['message'] = $message;
+
   $queue_factory = \Drupal::service('queue');
   $queue = $queue_factory->get('email_queue');
   $queue->createQueue();
   $queue->createItem($data);
-}*/
+}
 
 function community_notifier_cron(){
   $daily_interval = 60; //to be got from the configration settings (community_notifier.config.yml)
@@ -137,7 +141,9 @@ function community_notifier_cron(){
 
   if (\Drupal::time()->getRequestTime() >= $next_daily_execution){
     $comments = \Drupal::service('community_notifier.nodeflags')->getComments('daily');
-    var_dump($comments);
+    foreach ($comments as $comment){
+      communityNnotifierEmailQueue($comment['email'], $comment['comments']['subject'], $comment['comments']['body']);
+    }
     \Drupal::state()->set('community_notifier.daily_next_execution', \Drupal::time()->getRequestTime() + $daily_interval);
   }
 
@@ -146,6 +152,9 @@ function community_notifier_cron(){
 
   if (\Drupal::time()->getRequestTime() >= $next_weekly_execution){
     $comments = \Drupal::service('community_notifier.nodeflags')->getComments('weekly');
+    foreach ($comments as $comment){
+      communityNnotifierEmailQueue($comment['email'], $comment['comments']['subject'], $comment['comments']['body']);
+    }
     \Drupal::state()->set('community_notifier.weekly_next_execution', \Drupal::time()->getRequestTime() + $weekly_interval);
   }
 }
