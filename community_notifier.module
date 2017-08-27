@@ -129,6 +129,23 @@ function community_notifier_comment_update(CommentInterface $comment) {
 }*/
 
 function community_notifier_cron(){
-  $last_run = \Drupal::state()->get('community_notifier.last_check', 0);
-  \Drupal::state()->set('mymodule.last_check', \Drupal::time()->getRequestTime());
+  $daily_interval = 60; //to be got from the configration settings (community_notifier.config.yml)
+  $weekly_interval = 120; //to be got from configration settings (community_notifier.config.yml)
+
+  $next_daily_execution  = \Drupal::state()->get('community_notifier.daily_next_execution');
+  $next_daily_execution = !empty($next_daily_execution) ? $next_daily_execution : 0;
+
+  if (\Drupal::time()->getRequestTime() >= $next_daily_execution){
+    $comments = \Drupal::service('community_notifier.nodeflags')->getComments('daily');
+    var_dump($comments);
+    \Drupal::state()->set('community_notifier.daily_next_execution', \Drupal::time()->getRequestTime() + $daily_interval);
+  }
+
+  $next_weekly_execution  = \Drupal::state()->get('community_notifier.weekly_next_execution');
+  $next_weekly_execution = !empty($next_weekly_execution) ? $next_weekly_execution : 0;
+
+  if (\Drupal::time()->getRequestTime() >= $next_weekly_execution){
+    $comments = \Drupal::service('community_notifier.nodeflags')->getComments('weekly');
+    \Drupal::state()->set('community_notifier.weekly_next_execution', \Drupal::time()->getRequestTime() + $weekly_interval);
+  }
 }

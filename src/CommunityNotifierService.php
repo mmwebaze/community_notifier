@@ -122,18 +122,19 @@ class CommunityNotifierService implements CommunityNotifierServiceInterface {
   /**
    * @return array of comments subscribed to by different users
    */
-  public function getComments(){
-    $notificationEntities = $this->getNotificationEntitiesByFrequency('immediately', '<>');
+  public function getComments($frequency){
+    $notificationEntities = $this->getNotificationEntitiesByFrequency($frequency);
     $comments = [];
     foreach ($notificationEntities as $notificationEntity){
       $notificationEntityId = $notificationEntity->id();
       $targetId = $notificationEntity->getFlaggedEntityId();
-      $frequency = $notificationEntity->getFrequency();
+      //$frequency = $notificationEntity->getFrequency();
       $notificationComments = $this->getCommentsForNotification($targetId, $frequency);
       $tempComments = [];
       foreach ($notificationComments as $notificationComment){
         $tempComments['subject'] = $notificationComment->getSubject();
         $tempComments['body'] = $notificationComment->get('comment_body')->value;
+        $tempComments['created'] = date('Y-m-d', $notificationComment->get('created')->value);
       }
       $comments[$notificationEntityId] = [
         'frequency' => $frequency,
