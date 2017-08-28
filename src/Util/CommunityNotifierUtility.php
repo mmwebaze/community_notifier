@@ -33,4 +33,13 @@ class CommunityNotifierUtility {
       return [$start, $end];
     }
   }
+  public static function mergeComments(array $comments){
+    $bodyTemp = [];
+    //var_dump($comments);die();
+    foreach ($comments as $comment){
+      array_push($bodyTemp, $comment['body']);
+    }
+
+    return implode('<br>', $bodyTemp);
+  }
 }

@@ -112,7 +112,7 @@ class CommunityNotifierService implements CommunityNotifierServiceInterface {
     $ids = $storage->getQuery()
       ->condition('entity_id', $targetId, '=')
       ->condition('created', $range, 'BETWEEN')
-      ->range(0, 5)
+      //->range(0, 5)
       ->execute();
     $comments = $storage->loadMultiple($ids);
 
@@ -125,23 +125,41 @@ class CommunityNotifierService implements CommunityNotifierServiceInterface {
   public function getComments($frequency){
     $notificationEntities = $this->getNotificationEntitiesByFrequency($frequency);
     $comments = [];
+
     foreach ($notificationEntities as $notificationEntity){
       $notificationEntityId = $notificationEntity->id();
+      var_dump($notificationEntityId.' *************************');
       $targetId = $notificationEntity->getFlaggedEntityId();
       //$frequency = $notificationEntity->getFrequency();
       $notificationComments = $this->getCommentsForNotification($targetId, $frequency);
       $tempComments = [];
+      $email = $notificationEntity->getOwner()->getEmail();
+      $notifiableComments = [];
+      $subject = '';
       foreach ($notificationComments as $notificationComment){
-        $tempComments['subject'] = $notificationComment->getSubject();
-        $tempComments['body'] = $notificationComment->get('comment_body')->value;
-        $tempComments['created'] = date('Y-m-d', $notificationComment->get('created')->value);
+        $subject = $notificationComment->getCommentedEntity()->label();
+        $temp = [];
+        //$temp['subject'] = $notificationComment->getSubject();
+        $temp['body'] = $notificationComment->get('comment_body')->value;
+        $temp['created'] = date('Y-m-d', $notificationComment->get('created')->value);
+        array_push($notifiableComments, $temp);
       }
-      $comments[$notificationEntityId] = [
-        'frequency' => $frequency,
-        'email' => $notificationEntity->getOwner()->getEmail(),
-        //'comments' => $this->getCommentsForNotification($targetId, $frequency),
-        'comments' => $tempComments,
-      ];
+      if (!empty($notifiableComments)){
+        $comments[$notificationEntityId] = [
+          'email' => $email,
+          'subject' => $subject,
+          'comments' => $notifiableComments
+        ];
+      }
+
+      /*if (!empty($notificationComments)){
+        $comments[$notificationEntityId] = [
+          'frequency' => $frequency,
+          'email' => $notificationEntity->getOwner()->getEmail(),
+          //'comments' => $this->getCommentsForNotification($targetId, $frequency),
+          'comments' => $tempComments,
+        ];
+      }*/
     }
     return $comments;
   }

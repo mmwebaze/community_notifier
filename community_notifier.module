@@ -100,25 +100,33 @@ function community_notifier_emailer($module, $key, $to, $subject, $message, $use
  * Implements hook_form_alter().
  */
 function community_notifier_form_alter(&$form, FormStateInterface $form_state, $form_id) {
-  if ($form_id == 'community_notifier_frequency_edit_form'){
-    $form['name']['#disabled'] = TRUE;
-    $form['flag_id']['#disabled'] = TRUE;
-    $form['entity_id']['#disabled'] = TRUE;
-    $form['entity_name']['#disabled'] = TRUE;
-    $dropdown_array = [
-      'immediately' => 'immediately',
-      'daily' => 'daily',
-      'weekly' => 'weekly'
-    ];
-    $form['frequency']['widget'][0]['value'] = array(
-      '#type' => 'select',
-      '#default_value' => '1',
-      '#options' => $dropdown_array,
-    );
+  switch($form_id){
+    case 'user_form':
+      $form['subscriptions'] = array(
+        '#type' => 'fieldset',
+        '#title' => 'Subscriptions',
+      );
+      break;
+    case 'community_notifier_frequency_edit_form':
+      $form['name']['#disabled'] = TRUE;
+      $form['flag_id']['#disabled'] = TRUE;
+      $form['entity_id']['#disabled'] = TRUE;
+      $form['entity_name']['#disabled'] = TRUE;
+      $dropdown_array = [
+        'immediately' => 'immediately',
+        'daily' => 'daily',
+        'weekly' => 'weekly'
+      ];
+      $form['frequency']['widget'][0]['value'] = array(
+        '#type' => 'select',
+        '#default_value' => '1',
+        '#options' => $dropdown_array,
+      );
+      break;
   }
 }
 
-function communityNnotifierEmailQueue($to, $subject, $message) {
+function communityNotifierEmailQueue($to, $subject, $message) {
   /*$data['to'] = 'amacevitt@drupal.local';
   $data['subject'] = 'Testing queue system';
   $data['message'] = 'This is message of testing';*/
@@ -142,7 +150,7 @@ function community_notifier_cron(){
   if (\Drupal::time()->getRequestTime() >= $next_daily_execution){
     $comments = \Drupal::service('community_notifier.nodeflags')->getComments('daily');
     foreach ($comments as $comment){
-      communityNnotifierEmailQueue($comment['email'], $comment['comments']['subject'], $comment['comments']['body']);
+      communityNotifierEmailQueue($comment['email'], $comment['comments']['subject'], $comment['comments']['body']);
     }
     \Drupal::state()->set('community_notifier.daily_next_execution', \Drupal::time()->getRequestTime() + $daily_interval);
   }
@@ -153,7 +161,8 @@ function community_notifier_cron(){
   if (\Drupal::time()->getRequestTime() >= $next_weekly_execution){
     $comments = \Drupal::service('community_notifier.nodeflags')->getComments('weekly');
     foreach ($comments as $comment){
-      communityNnotifierEmailQueue($comment['email'], $comment['comments']['subject'], $comment['comments']['body']);
+      $body = \Drupal\community_notifier\Util\CommunityNotifierUtility::mergeComments($comment['comments']);
+      communityNotifierEmailQueue($comment['email'], $comment['subject'], $body);
     }
     \Drupal::state()->set('community_notifier.weekly_next_execution', \Drupal::time()->getRequestTime() + $weekly_interval);
   }
