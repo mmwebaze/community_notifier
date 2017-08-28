@@ -112,7 +112,7 @@ class CommunityNotifierService implements CommunityNotifierServiceInterface {
     $ids = $storage->getQuery()
       ->condition('entity_id', $targetId, '=')
       ->condition('created', $range, 'BETWEEN')
-      //->range(0, 5)
+      ->range(0, 5)
       ->execute();
     $comments = $storage->loadMultiple($ids);
 
@@ -128,7 +128,6 @@ class CommunityNotifierService implements CommunityNotifierServiceInterface {
 
     foreach ($notificationEntities as $notificationEntity){
       $notificationEntityId = $notificationEntity->id();
-      var_dump($notificationEntityId.' *************************');
       $targetId = $notificationEntity->getFlaggedEntityId();
       //$frequency = $notificationEntity->getFrequency();
       $notificationComments = $this->getCommentsForNotification($targetId, $frequency);
