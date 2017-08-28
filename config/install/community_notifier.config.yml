@@ -1,6 +1,0 @@
-community_notifier.config:
-  type: config_object
-  langcode: en
-  intervals:
-    daily: 86400
-    weekly: 604800

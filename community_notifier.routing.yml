@@ -1,4 +1,3 @@
-
 community_notifier.flag:
   path: '/community_notifier/flag'
   defaults:
@@ -13,3 +12,10 @@ community_notifier.unflag:
     _title: 'unflag'
   requirements:
     _permission: 'access content'
+community_notifier.config:
+  path: /admin/config/community/community_notifier
+  defaults:
+      _form: '\Drupal\community_notifier\Form\CommunityNotifierSettingsForm'
+      _title: 'Community Notifier Settings'
+  requirements:
+    _permission: 'administer site configuration'
