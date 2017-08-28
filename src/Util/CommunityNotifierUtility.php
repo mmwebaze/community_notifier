@@ -35,7 +35,6 @@ class CommunityNotifierUtility {
   }
   public static function mergeComments(array $comments){
     $bodyTemp = [];
-    var_dump(count($comments));die();
     foreach ($comments as $comment){
       array_push($bodyTemp, $comment['body']);
     }
