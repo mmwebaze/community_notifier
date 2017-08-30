@@ -1,9 +1,9 @@
-community_notifier.config:
+community_notifier_settings:
   settings:
     messages:
       send: 5
       length: 100
-      separator: *
+      separator: '*'
     frequency:
       daily: 0
       weekly: 6

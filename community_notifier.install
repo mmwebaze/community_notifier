@@ -2,12 +2,29 @@
 /**
  * Implements hook_install.
  */
-function dhis_install() {
-  //Adds extra field called Frequency to the flagging table created by the Flags module.
-  // The frequency field can take on the following values immediately, daily or weekly.
-  /*\Drupal::service('database')->schema()->addField('flagging', 'frequency', [
-    'type' => 'varchar',
-    'length' => 11,
-    'not null' => TRUE,'default' => ''
-  ]);*/
+function community_notifier_install() {
+  $storage = \Drupal::entityTypeManager()->getStorage('flag');
+  $ids = $storage->getQuery()->condition('id', 'subscribe', '=')->execute();
+  if (count($ids) == 0){
+    \Drupal\flag\Entity\Flag::create([
+      'id' => 'subscribe',
+      'label' => 'subscribe',
+      'langcode' => 'en',
+      'status' => TRUE,
+      'bundles' => [],
+      'entity_type' => 'node',
+      'global' => FALSE,
+      'flag_short' => 'subscribe to this item',
+      'unflag_short' => 'unsubscribe  to this item',
+      'flag_type' => 'entity:node',
+      'link_type' => 'reload',
+    ])->save();
+  }
+}
+
+/**
+ * Implements hook_uninstall.
+ */
+function community_notifier_uninstall() {
+
 }
