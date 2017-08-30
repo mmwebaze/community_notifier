@@ -43,13 +43,11 @@ function community_notifier_comment_insert(CommentInterface $comment) {
   $commentedEntityId = $comment->getCommentedEntityId();
   $notificationEntities = \Drupal::service('community_notifier.nodeflags')->getNotificationEntitiesById($commentedEntityId,
     \Drupal::currentUser()->id());
-  $currentUser = \Drupal::currentUser()->getEmail();
+  //$currentUser = \Drupal::currentUser()->getEmail();
+
   foreach ($notificationEntities as $notificationEntity) {
-    /*if ($notificationEntity->getFrequency() == 'immediately' && $currentUser != $notificationEntity->getOwner()->getEmail()) {
-      community_notifier_emailer('community_notifier', 'comment_insert_alert', $notificationEntity->getOwner()->getEmail(),
-        $comment->getSubject(), $comment->get('comment_body')->value, $notificationEntity->getOwner()->getUsername());
-    }*/
     $frequency = $notificationEntity->getFrequency();
+
     if ($frequency == 'immediately'){
       community_notifier_emailer('community_notifier', 'comment_insert_alert', $notificationEntity->getOwner()->getEmail(),
         $comment->getSubject(), $comment->get('comment_body')->value, $notificationEntity->getOwner()->getUsername());
@@ -102,10 +100,56 @@ function community_notifier_emailer($module, $key, $to, $subject, $message, $use
 function community_notifier_form_alter(&$form, FormStateInterface $form_state, $form_id) {
   switch($form_id){
     case 'user_form':
+      $notEntities = \Drupal::service('community_notifier.nodeflags')->getUserNotificationEntities(\Drupal::currentUser()->id());
+      $dropdown_array = [
+        'immediately' => 'immediately',
+        'daily' => 'daily',
+        'weekly' => 'weekly'
+      ];
       $form['subscriptions'] = array(
         '#type' => 'fieldset',
         '#title' => 'Subscriptions',
       );
+      $header = [
+        'id' => t('#'),
+        'topic' => t('Topic'),
+        'flag' => t('Flag'),
+        'frequency' => t('Frequency'),
+      ];
+      $form['subscriptions']['table'] = [
+        '#type' => 'table',
+        '#header' => $header,
+        '#tabledrag' => FALSE,
+        '#empty' => t('No subscriptions available.'),
+      ];
+      $field_count = 1;
+
+      foreach ($notEntities as $ent){
+        $form['subscriptions']['table'][$field_count]['id'] = [
+          '#type' => 'hidden',
+          '#value' => $ent->id(),
+          //'#column' => 'one',
+        ];
+
+        $form['subscriptions']['table'][$field_count]['topic'] = [
+          '#type' => 'label',
+          '#title' => $ent->getFlaggedEntityName(),
+          //'#column' => 'one',
+        ];
+        $form['subscriptions']['table'][$field_count]['flag'] = [
+          '#type' => 'label',
+          '#title' => $ent->getFlagId(),
+          //'#column' => 'one',
+        ];
+        $form['subscriptions']['table'][$field_count]['frequency'] = [
+          '#type' => 'select',
+          '#default_value' => $ent->getFrequency(),
+          '#options' => $dropdown_array,
+        ];
+        $field_count++;
+      }
+      $form['actions']['submit']['#submit'][] = 'community_notifier_user_from_submit';
+      return $form;
       break;
     case 'community_notifier_frequency_edit_form':
       $form['name']['#disabled'] = TRUE;
@@ -122,7 +166,24 @@ function community_notifier_form_alter(&$form, FormStateInterface $form_state, $
         '#default_value' => '1',
         '#options' => $dropdown_array,
       );
+
       break;
+  }
+}
+
+function community_notifier_user_from_submit(array  $form, FormStateInterface $form_state){
+
+  $subscriptions = $form_state->getValue('table');
+  foreach ($subscriptions as $subscription){
+    $newSubscription = $subscription['frequency'];
+    $notificationEntity = \Drupal::service('community_notifier.nodeflags')->updateNotificationEntity($subscription['id'], $newSubscription);
+    $oldSubscription = $notificationEntity->getFrequency();
+
+    //checks if old subscription is different from selected subscription and if different update notifications.
+    if ($oldSubscription != $newSubscription){
+      $notificationEntity->setFrequency($newSubscription);
+      $notificationEntity->save();
+    }
   }
 }
 

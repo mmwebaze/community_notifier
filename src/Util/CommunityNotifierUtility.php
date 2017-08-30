@@ -35,10 +35,24 @@ class CommunityNotifierUtility {
   }
   public static function mergeComments(array $comments){
     $bodyTemp = [];
-    foreach ($comments as $comment){
-      array_push($bodyTemp, $comment['body']);
+    $messageSettings = \Drupal::service('config.factory')->getEditable('community_notifier.settings')->get('settings.messages');
+    $length = $messageSettings['length'];
+    $seperator = $messageSettings['separator'];
+    $seperator_string = '';
+
+    for ($i = 0; $i <= 80; $i++){
+      $seperator_string .= $seperator;
     }
 
-    return implode('<br>', $bodyTemp);
+    foreach ($comments as $comment){
+      if ($length != 0){
+        array_push($bodyTemp, mb_strimwidth($comment['body'], 0, $length, '...'));
+      }
+      else{
+        array_push($bodyTemp, $comment['body']);
+      }
+    }
+
+    return implode('<br/>'.$seperator_string.'<br/>', $bodyTemp);
   }
 }

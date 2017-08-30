@@ -3,6 +3,7 @@
 namespace Drupal\community_notifier;
 use Drupal\community_notifier\Entity\CommunityNotifierFrequency;
 use Drupal\community_notifier\Util\CommunityNotifierUtility;
+use Drupal\Core\Config\ConfigFactory;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\flag\FlagService;
@@ -19,6 +20,7 @@ class CommunityNotifierService implements CommunityNotifierServiceInterface {
    */
   private $flag;
   private $currentUser;
+  private $configFactory;
   /*
    * @var EntityTypeManagerInterface
    * */
@@ -26,10 +28,11 @@ class CommunityNotifierService implements CommunityNotifierServiceInterface {
   /**
    * Constructs a new CommunityNotifierService object.
    */
-  public function __construct(FlagService $flag, AccountInterface $current_user, EntityTypeManagerInterface $entity_type_manager) {
+  public function __construct(FlagService $flag, AccountInterface $current_user, EntityTypeManagerInterface $entity_type_manager, ConfigFactory $config_factory) {
     $this->flag = $flag;
     $this->currentUser = $current_user;
     $this->entityTypeManager = $entity_type_manager;
+    $this->configFactory = $config_factory;
   }
   public function getFlaggableEntityTypes(){
     $contentFlags = [];
@@ -106,14 +109,19 @@ class CommunityNotifierService implements CommunityNotifierServiceInterface {
    * @param $frequency
    * @return \Drupal\Core\Entity\EntityInterface[]
    */
-  public function getCommentsForNotification($targetId, $frequency){
+  public function getCommentsForNotification($uid, $targetId, $frequency){
+    $send = $this->configFactory->getEditable('community_notifier.settings')->get('settings.messages.send');
     $range = CommunityNotifierUtility::frequencyDateRange($frequency);
     $storage = $this->entityTypeManager->getStorage('comment');
-    $ids = $storage->getQuery()
+    $query = $storage->getQuery()
+      ->condition('uid', $uid, '<>')
       ->condition('entity_id', $targetId, '=')
-      ->condition('created', $range, 'BETWEEN')
-      ->range(0, 5)
-      ->execute();
+      ->condition('created', $range, 'BETWEEN');
+      //->sort('changed','DESC');
+    if ($send != 0){
+      $query = $query->range(0, $send);
+    }
+    $ids = $query->execute();
     $comments = $storage->loadMultiple($ids);
 
     return $comments;
@@ -127,14 +135,14 @@ class CommunityNotifierService implements CommunityNotifierServiceInterface {
     $comments = [];
 
     foreach ($notificationEntities as $notificationEntity){
+      $uid = $notificationEntity->getOwnerId();
       $notificationEntityId = $notificationEntity->id();
       $targetId = $notificationEntity->getFlaggedEntityId();
-      //$frequency = $notificationEntity->getFrequency();
-      $notificationComments = $this->getCommentsForNotification($targetId, $frequency);
-      $tempComments = [];
+      $notificationComments = $this->getCommentsForNotification($uid, $targetId, $frequency);
       $email = $notificationEntity->getOwner()->getEmail();
       $notifiableComments = [];
       $subject = '';
+
       foreach ($notificationComments as $notificationComment){
         $subject = $notificationComment->getCommentedEntity()->label();
         $temp = [];
@@ -150,16 +158,25 @@ class CommunityNotifierService implements CommunityNotifierServiceInterface {
           'comments' => $notifiableComments
         ];
       }
-
-      /*if (!empty($notificationComments)){
-        $comments[$notificationEntityId] = [
-          'frequency' => $frequency,
-          'email' => $notificationEntity->getOwner()->getEmail(),
-          //'comments' => $this->getCommentsForNotification($targetId, $frequency),
-          'comments' => $tempComments,
-        ];
-      }*/
     }
     return $comments;
+  }
+  public function getUserNotificationEntities($userId){
+    $storage = $this->entityTypeManager->getStorage('community_notifier_frequency');
+    $ids = $storage->getQuery()
+      ->condition('user_id', $userId, '=')
+      ->execute();
+    $userNotificationEntities = $storage->loadMultiple($ids);
+
+    return $userNotificationEntities;
+  }
+  public function updateNotificationEntity($fnotificationEntityId){
+    $storage = $this->entityTypeManager->getStorage('community_notifier_frequency');
+    $ids = $storage->getQuery()
+      ->condition('id', $fnotificationEntityId, '=')
+      ->execute();
+    $userNotificationEntity = $storage->loadMultiple($ids);
+
+    return current($userNotificationEntity);
   }
 }

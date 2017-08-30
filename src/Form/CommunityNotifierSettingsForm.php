@@ -52,7 +52,7 @@ class CommunityNotifierSettingsForm extends ConfigFormBase {
       '#size' => 3,
       '#maxlength' => 4,
       '#title' => $this->t('Number of comments to send out per email. (0) means everthing.'),
-      '#default_value' => $settings['messages']['send'],
+      '#default_value' => isset($settings['messages']['send']) ? $settings['messages']['send'] : 0,
       '#required' => TRUE,
     );
     $form['message_settings']['length'] = array(
@@ -60,7 +60,15 @@ class CommunityNotifierSettingsForm extends ConfigFormBase {
       '#title' => $this->t('Length of each comment body sent out in email. (0) means entire comment body.'),
       '#size' => 3,
       '#maxlength' => 4,
-      '#default_value' => $settings['messages']['length'],
+      '#default_value' => isset($settings['messages']['length']) ? $settings['messages']['length'] : 0,
+      '#required' => TRUE,
+    );
+    $form['message_settings']['separator'] = array(
+      '#type' => 'textfield',
+      '#title' => $this->t('Email message comment separator.'),
+      '#size' => 1,
+      '#maxlength' => 1,
+      '#default_value' => isset($settings['messages']['separator'])? $settings['messages']['separator'] : '*',
       '#required' => TRUE,
     );
     $form['frequency_settings'] = array(
@@ -92,10 +100,10 @@ class CommunityNotifierSettingsForm extends ConfigFormBase {
    * {@inheritdoc}
    */
   public function submitForm(array &$form, FormStateInterface $form_state) {
-    $config = $this->config('community_notifier.settings');
     $config = $this->configFactory()->getEditable('community_notifier.settings');
     $config->set('settings.messages.send', $form_state->getValue('send'));
     $config->set('settings.messages.length', $form_state->getValue('length'));
+    $config->set('settings.messages.separator', $form_state->getValue('separator'));
     $config->set('settings.frequency.daily', $form_state->getValue('daily'));
     $config->set('settings.frequency.weekly', $form_state->getValue('weekly'));
     $config->save();
