@@ -9,6 +9,9 @@ use Drupal\Core\Routing\RouteMatchInterface;
 use Drupal\comment\CommentInterface;
 use \Drupal\Core\Form\FormStateInterface;
 
+define("DAILY", 86400);
+define("WEEKLY", 604800);
+
 /**
  * Implements hook_help().
  */
@@ -200,10 +203,12 @@ function communityNotifierEmailQueue($to, $subject, $message) {
   $queue->createQueue();
   $queue->createItem($data);
 }
-
+/**
+ * Implements hook_cron().
+ */
 function community_notifier_cron(){
-  $daily_interval = 60; //to be got from the configration settings (community_notifier.config.yml)
-  $weekly_interval = 120; //to be got from configration settings (community_notifier.config.yml)
+  $daily_interval = 60; //to be changed to the DAILY constant.
+  $weekly_interval = 120; //to be changed to the weekly constant.
 
   $next_daily_execution  = \Drupal::state()->get('community_notifier.daily_next_execution');
   $next_daily_execution = !empty($next_daily_execution) ? $next_daily_execution : 0;

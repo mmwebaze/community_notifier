@@ -26,14 +26,16 @@ class CommunityNotifierController extends ActionLinkController {
    * {@inheritdoc}
    */
   public function flag(FlagInterface $flag, $entity_id, Request $request) {
-    $this->communityNotifier->flag($flag->id(), $entity_id);
+    $nodes = $this->communityNotifier->getForumTopics($entity_id);
+    $this->communityNotifier->flag($flag->id(), $entity_id, $request, $nodes);
     return parent::flag($flag, $entity_id, $request);
   }
   /**
    * {@inheritdoc}
    */
   public function unflag(FlagInterface $flag, $entity_id, Request $request) {
-    $this->communityNotifier->unflag($flag->id(), $entity_id);
+    $nodes = $this->communityNotifier->getForumTopics($entity_id);
+    $this->communityNotifier->unflag($flag->id(), $entity_id, $request, $nodes);
     return parent::unflag($flag, $entity_id, $request);
   }
   /**
