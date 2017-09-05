@@ -30,7 +30,7 @@ class CommunityNotifierController extends ActionLinkController {
     //var_dump(count($nodes). ' topics');
     $unsubscribedNodes = [];
     foreach ($nodes as $node){
-      $ownerId = \Drupal::currentUser()->id();
+      $ownerId = $this->communityNotifier->getCurrentUser();
       $notificationEntity = $this->communityNotifier->getNotificationEntitiesById($node->id(), $ownerId, '=');
 
       if (count($notificationEntity) == 0){
@@ -55,7 +55,7 @@ class CommunityNotifierController extends ActionLinkController {
 
     $subscribedNodes = [];
     foreach ($nodes as $node){
-      $ownerId = \Drupal::currentUser()->id();
+      $ownerId = $this->communityNotifier->getCurrentUser();
 
       $notificationEntity = $this->communityNotifier->getNotificationEntitiesById($node->id(), $ownerId, '=');
 

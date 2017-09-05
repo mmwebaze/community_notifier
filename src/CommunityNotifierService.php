@@ -300,5 +300,8 @@ class CommunityNotifierService implements CommunityNotifierServiceInterface {
     ])->save();*/
     Flag::create($parameters)->save();
   }
+  public function getCurrentUser(){
+    return $this->currentUser->id();
+  }
 }
 
