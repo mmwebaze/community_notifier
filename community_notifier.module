@@ -206,12 +206,13 @@ function communityNotifierEmailQueue($to, $subject, $message) {
  * Implements hook_cron().
  */
 function community_notifier_cron(){
-  $daily_interval = 60; //to be changed to the DAILY constant.
-  $weekly_interval = 120; //to be changed to the weekly constant.
+  $daily_interval = 60; //DAILY;
+  $weekly_interval = 120; //WEEKLY;
 
   $next_daily_execution  = \Drupal::state()->get('community_notifier.daily_next_execution');
   $next_daily_execution = !empty($next_daily_execution) ? $next_daily_execution : 0;
 
+  //executes daily
   if (\Drupal::time()->getRequestTime() >= $next_daily_execution){
     $comments = \Drupal::service('community_notifier.nodeflags')->getComments('daily');
     foreach ($comments as $comment){
@@ -222,7 +223,7 @@ function community_notifier_cron(){
 
   $next_weekly_execution  = \Drupal::state()->get('community_notifier.weekly_next_execution');
   $next_weekly_execution = !empty($next_weekly_execution) ? $next_weekly_execution : 0;
-
+  //executes weekly
   if (\Drupal::time()->getRequestTime() >= $next_weekly_execution){
     $comments = \Drupal::service('community_notifier.nodeflags')->getComments('weekly');
     foreach ($comments as $comment){
@@ -232,6 +233,10 @@ function community_notifier_cron(){
     \Drupal::state()->set('community_notifier.weekly_next_execution', \Drupal::time()->getRequestTime() + $weekly_interval);
   }
 }
+
+/**
+ * Implements hook_ENTITY_TYPE_insert().
+ */
 function community_notifier_node_insert(Drupal\Core\Entity\EntityInterface $entity){
   $forumService = \Drupal::service('forum_manager');
   $isForumType = $forumService->checkNodeType($entity);
@@ -239,20 +244,15 @@ function community_notifier_node_insert(Drupal\Core\Entity\EntityInterface $enti
   if ($isForumType){
     $forum_index_storage = \Drupal::service('forum.index_storage');
     $term_id = $forum_index_storage->getOriginalTermId($entity);
-    drupal_set_message('***********************'.$term_id);
 
-   /* foreach ($result as $record) {
-      //$tids[] = $record->tid;
-      $notificationEntities = \Drupal::service('community_notifier.nodeflags')->getNotificationEntitiesByForum($record->tid);
-      foreach ($notificationEntities as $notificationEntity){
-        $email = $notificationEntity->getOwner()->getEmail();
-        $subject = $notificationEntity->getFlaggedEntityName().' has new topic';
-        $body = 'New topic '.$entity->label().' has been added to the forum';
+    $notificationEntities = \Drupal::service('community_notifier.nodeflags')->getNotificationEntitiesByForum($term_id);
+    foreach ($notificationEntities as $notificationEntity){
+      $email = $notificationEntity->getOwner()->getEmail();
+      $subject = $notificationEntity->getFlaggedEntityName().' has new topic';
+      $body = 'New topic '.$entity->label().' has been added to the forum';
 
-        drupal_set_message($email.' - '.$subject.' - '.$body.' - ');
-        //communityNotifierEmailQueue($comment['email'], $comment['comments']['subject'], $comment['comments']['body']);
-      }
-    }*/
+      communityNotifierEmailQueue($email, $subject, $body);
+    }
   }
 }
 function community_notifier_module_implements_alter(&$implementations, $hook) {

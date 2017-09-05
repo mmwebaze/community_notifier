@@ -295,6 +295,16 @@ class CommunityNotifierService implements CommunityNotifierServiceInterface {
       $entity->delete();
     }
   }
+
+  /**
+   * creates a notification entity
+   *
+   * @param $userId
+   * @param $userName
+   * @param $flagId
+   * @param $entityId
+   * @param $entityName
+   */
   public function createNotificationEntities($userId, $userName, $flagId, $entityId, $entityName){
     CommunityNotifierFrequency::create([
       'uid' => $userId,
@@ -304,6 +314,11 @@ class CommunityNotifierService implements CommunityNotifierServiceInterface {
       'entity_name' => $entityName,
     ])->save();
   }
+
+  /**
+   * @param $tid taxonomy term id
+   * @return \Drupal\Core\Entity\EntityInterface[] array of notification entities
+   */
   public function getNotificationEntitiesByForum($tid){
     $storage = $this->entityTypeManager->getStorage('community_notifier_frequency');
     $ids = $storage->getQuery()
