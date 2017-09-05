@@ -304,4 +304,11 @@ class CommunityNotifierService implements CommunityNotifierServiceInterface {
       'entity_name' => $entityName,
     ])->save();
   }
+  public function getNotificationEntitiesByForum($tid){
+    $storage = $this->entityTypeManager->getStorage('community_notifier_frequency');
+    $ids = $storage->getQuery()
+      ->condition('entity_id', $tid, '=')
+      ->execute();
+    return $storage->loadMultiple($ids);
+  }
 }

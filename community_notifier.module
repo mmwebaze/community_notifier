@@ -72,7 +72,6 @@ function community_notifier_mail($key, &$message, $params) {
       $message['body'][] = $params['message'];
       break;
     case 'query_mail':
-      drupal_set_message('queued');
       $message['from'] = \Drupal::config('system.site')->get('mail');
       $message['subject'] = t('@title', array('@title' => $params['subject']));
       $message['body'][] = $params['message'];
@@ -91,7 +90,7 @@ function community_notifier_emailer($module, $key, $to, $subject, $message, $use
   $mailManager = \Drupal::service('plugin.manager.mail');
   $params['message'] = $message;
   $params['subject'] = $subject;
-  $langcode = \Drupal::currentUser()->getPreferredLangcode();
+  $langcode = \Drupal::currentUser()->getPreferredLangcode();//should be changed to system lang
   $result = $mailManager->mail($module, $key, $to, $langcode, $params, NULL, true);
   if ($result['result'] !== true) {
     \Drupal::logger('community_notifier')->error(t('There was a problem sending an email to user '.$username));
@@ -231,5 +230,36 @@ function community_notifier_cron(){
       communityNotifierEmailQueue($comment['email'], $comment['subject'], $body);
     }
     \Drupal::state()->set('community_notifier.weekly_next_execution', \Drupal::time()->getRequestTime() + $weekly_interval);
+  }
+}
+function community_notifier_node_insert(Drupal\Core\Entity\EntityInterface $entity){
+  $forumService = \Drupal::service('forum_manager');
+  $isForumType = $forumService->checkNodeType($entity);
+
+  if ($isForumType){
+    $forum_index_storage = \Drupal::service('forum.index_storage');
+    $term_id = $forum_index_storage->getOriginalTermId($entity);
+    drupal_set_message('***********************'.$term_id);
+
+   /* foreach ($result as $record) {
+      //$tids[] = $record->tid;
+      $notificationEntities = \Drupal::service('community_notifier.nodeflags')->getNotificationEntitiesByForum($record->tid);
+      foreach ($notificationEntities as $notificationEntity){
+        $email = $notificationEntity->getOwner()->getEmail();
+        $subject = $notificationEntity->getFlaggedEntityName().' has new topic';
+        $body = 'New topic '.$entity->label().' has been added to the forum';
+
+        drupal_set_message($email.' - '.$subject.' - '.$body.' - ');
+        //communityNotifierEmailQueue($comment['email'], $comment['comments']['subject'], $comment['comments']['body']);
+      }
+    }*/
+  }
+}
+function community_notifier_module_implements_alter(&$implementations, $hook) {
+
+  if($hook == 'node_insert'){
+    $group = $implementations['community_notifier'];
+    unset($implementations['community_notifier']);
+    $implementations['community_notifier'] = $group;
   }
 }
