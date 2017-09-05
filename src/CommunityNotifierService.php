@@ -7,6 +7,7 @@ use Drupal\Core\Config\ConfigFactory;
 use Drupal\Core\Database\Connection;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Session\AccountInterface;
+use Drupal\flag\Entity\Flag;
 use Drupal\flag\FlagService;
 use Symfony\Component\HttpFoundation\Request;
 
@@ -326,4 +327,21 @@ class CommunityNotifierService implements CommunityNotifierServiceInterface {
       ->execute();
     return $storage->loadMultiple($ids);
   }
+  public function createFlag(array $parameters){
+    /*Flag::create([
+      'id' => 'subscribe',
+      'label' => 'subscribe',
+      'langcode' => 'en',
+      'status' => TRUE,
+      'bundles' => ['node'],
+      'entity_type' => 'node',
+      'global' => FALSE,
+      'flag_short' => 'subscribe to this item',
+      'unflag_short' => 'unsubscribe  to this item',
+      'flag_type' => 'entity:node',
+      'link_type' => 'reload',
+    ])->save();*/
+    Flag::create($parameters)->save();
+  }
 }
+
