@@ -54,33 +54,17 @@ class CommunityNotifierService implements CommunityNotifierServiceInterface {
   }
   public function flag($flagId, $flaggedEntityId, Request $request, array $entities = NULL){
    $destination = $this->destination($request->get('destination'));
-   //var_dump($request->get('token')); die();
-   /*$destination_parameters = explode('/', $destination);
-   $destination = count($destination_parameters) == 1 ? $destination :  $destination_parameters[0].'_'.$destination_parameters[1];
-   $destination = str_replace('/', '_', $destination);*/
 
     switch($destination){
       case 'node':
-        /*CommunityNotifierFrequency::create([
-          'uid' => $this->currentUser->id(),
-          'name' => $this->currentUser->getDisplayName(),
-          'flag_id' => $flagId,
-          'entity_id' => $flaggedEntityId,
-          'entity_name' => $this->getEntityById($flaggedEntityId)->label(),
-        ])->save();*/
         $this->createNotificationEntities($this->currentUser->id(), $this->currentUser->getDisplayName(), $flagId,
           $flaggedEntityId, $this->getEntityById($flaggedEntityId)->label());
         break;
       case 'taxonomy_term':
-        /*CommunityNotifierFrequency::create([
-          'uid' => $this->currentUser->id(),
-          'name' => $this->currentUser->getDisplayName(),
-          'flag_id' => $flagId,
-          'entity_id' => $flaggedEntityId,
-          'entity_name' => $this->getEntityById($flaggedEntityId, 'taxonomy_term')->label(),
-        ])->save();*/
+        $res = $this->getEntityById($flaggedEntityId, 'taxonomy_term');
+
         $this->createNotificationEntities($this->currentUser->id(), $this->currentUser->getDisplayName(), $flagId,
-          $flaggedEntityId, $this->getEntityById($flaggedEntityId, 'taxonomy_term')->label());
+          $flaggedEntityId, $this->getEntityById($flaggedEntityId, (gettype($res) == 'boolean' ? 'node' : 'taxonomy_term'))->label());
         if ($entities){
           $subscribeFlag = $this->getSubscribeFlag();
           foreach ($entities as $entity){
@@ -89,37 +73,10 @@ class CommunityNotifierService implements CommunityNotifierServiceInterface {
               $subscribeFlag->id(), $entity->id(), $this->getEntityById($entity->id())->label());
           }
         }
-        /*$flagging = $this->entityTypeManager->getStorage('flagging')->create([
-          'uid' => $this->currentUser->id(),
-          'session_id' => $session_id,
-          'flag_id' => $flag->id(),
-          'entity_id' => $entity->id(),
-          'entity_type' => $entity->getEntityTypeId(),
-          'global' => $flag->isGlobal(),
-        ]);*/
         break;
     }
-    /*if ($destination == 'node'){
-      CommunityNotifierFrequency::create([
-        'uid' => $this->currentUser->id(),
-        'name' => $this->currentUser->getDisplayName(),
-        'flag_id' => $flagId,
-        'entity_id' => $flaggedEntityId,
-        'entity_name' => $this->getEntityById($flaggedEntityId)->label(),
-      ])->save();
-    }*/
   }
   public function unflag($flagId, $flaggedEntityId, Request $request, array $entities = NULL){
-    /*$storage = $this->entityTypeManager->getStorage('community_notifier_frequency');
-    $ids = $storage->getQuery()
-      ->condition('entity_id', $flaggedEntityId, '=')
-      ->condition('flag_id', $flagId, '=')
-      ->condition('user_id', $this->currentUser->id(), '=')
-      ->execute();
-
-    foreach ($storage->loadMultiple($ids) as $entity){
-      $entity->delete();
-    }*/
     $this->deleteSubscriptions($flaggedEntityId, $flagId, $this->currentUser->id());
 
     //handles deletion of forum subscriptions.
@@ -147,11 +104,11 @@ class CommunityNotifierService implements CommunityNotifierServiceInterface {
    * @param $flaggedEntityId
    * @return an array of CommunityNotifierFrequency entities with a specified flaggedEntityId.
    */
-  public function getNotificationEntitiesById($flaggedEntityId, $ownerId){
+  public function getNotificationEntitiesById($flaggedEntityId, $ownerId, $condition = '!='){
     $storage = $this->entityTypeManager->getStorage('community_notifier_frequency');
     $ids = $storage->getQuery()
       ->condition('entity_id', $flaggedEntityId, '=')
-      ->condition('user_id', $ownerId, '!=')
+      ->condition('user_id', $ownerId, $condition)
       ->execute();
     $notifierEntities = $storage->loadMultiple($ids);
 

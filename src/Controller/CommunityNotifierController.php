@@ -27,7 +27,24 @@ class CommunityNotifierController extends ActionLinkController {
    */
   public function flag(FlagInterface $flag, $entity_id, Request $request) {
     $nodes = $this->communityNotifier->getForumTopics($entity_id);
-    $this->communityNotifier->flag($flag->id(), $entity_id, $request, $nodes);
+    //var_dump(count($nodes). ' topics');
+    $unsubscribedNodes = [];
+    foreach ($nodes as $node){
+      $ownerId = \Drupal::currentUser()->id();
+      $notificationEntity = $this->communityNotifier->getNotificationEntitiesById($node->id(), $ownerId, '=');
+
+      if (count($notificationEntity) == 0){
+        array_push($unsubscribedNodes, $node);
+      }
+    }
+    //var_dump(count($unsubscribedNodes).' unsubscribed');die();
+    if(count($unsubscribedNodes) == 0){
+      $this->communityNotifier->flag($flag->id(), $entity_id, $request, $unsubscribedNodes);
+    }
+    else{
+      $this->communityNotifier->flag($flag->id(), $entity_id, $request, $unsubscribedNodes);
+    }
+
     return parent::flag($flag, $entity_id, $request);
   }
   /**
@@ -35,7 +52,25 @@ class CommunityNotifierController extends ActionLinkController {
    */
   public function unflag(FlagInterface $flag, $entity_id, Request $request) {
     $nodes = $this->communityNotifier->getForumTopics($entity_id);
-    $this->communityNotifier->unflag($flag->id(), $entity_id, $request, $nodes);
+
+    $subscribedNodes = [];
+    foreach ($nodes as $node){
+      $ownerId = \Drupal::currentUser()->id();
+
+      $notificationEntity = $this->communityNotifier->getNotificationEntitiesById($node->id(), $ownerId, '=');
+
+      if (count($notificationEntity) != 0){
+        array_push($subscribedNodes, $node);
+      }
+    }
+
+    if(count($subscribedNodes) != 0){
+      $this->communityNotifier->unflag($flag->id(), $entity_id, $request, $subscribedNodes);
+    }
+    else{
+      $this->communityNotifier->unflag($flag->id(), $entity_id, $request, $subscribedNodes);
+    }
+    //$this->communityNotifier->unflag($flag->id(), $entity_id, $request, $nodes);
     return parent::unflag($flag, $entity_id, $request);
   }
   /**
