@@ -68,14 +68,14 @@ class CommunityNotifierService implements CommunityNotifierServiceInterface {
 
         $this->createNotificationEntities($this->currentUser->id(), $this->currentUser->getDisplayName(), $flagId,
           $flaggedEntityId, $this->getEntityById($flaggedEntityId, (gettype($res) == 'boolean' ? 'node' : 'taxonomy_term'))->label());
-        if ($entities){
+        /*if ($entities){
           $subscribeFlag = $this->getSubscribeFlag();
           foreach ($entities as $entity){
             $this->flagService->flag($subscribeFlag, $entity);
             $this->createNotificationEntities($this->currentUser->id(), $this->currentUser->getDisplayName(),
               $subscribeFlag->id(), $entity->id(), $this->getEntityById($entity->id())->label());
           }
-        }
+        }*/
         break;
     }
   }
@@ -83,24 +83,16 @@ class CommunityNotifierService implements CommunityNotifierServiceInterface {
     $this->deleteSubscriptions($flaggedEntityId, $flagId, $this->currentUser->id());
 
     //handles deletion of forum subscriptions.
-    $destination = $this->destination($request->get('destination'));
+    /*$destination = $this->destination($request->get('destination'));
     if ($destination == 'taxonomy_term'){
       if ($entities){
         $subscribeFlag = $this->getSubscribeFlag();
         foreach ($entities as $entity){
           $this->flagService->unflag($subscribeFlag, $entity);
-          /*$ids = $storage->getQuery()
-            ->condition('entity_id', $entity->id(), '=')
-            ->condition('flag_id', $subscribeFlag, '=')
-            ->condition('user_id', $this->currentUser->id(), '=')
-            ->execute();
-          foreach ($storage->loadMultiple($ids) as $entity){
-            $entity->delete();
-          }*/
           $this->deleteSubscriptions($entity->id(), $subscribeFlag->id(), $this->currentUser->id());
         }
       }
-    }
+    }*/
   }
 
   /**

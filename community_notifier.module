@@ -258,7 +258,7 @@ function community_notifier_node_insert(Drupal\Core\Entity\EntityInterface $enti
       }
       $email = $subscribedUser->getEmail();
       $subject = $notificationEntity->getFlaggedEntityName().' has new topic';
-      $body = 'New topic '.$entity->label().' has been added to the forum';
+      $body = 'New topic '.$entity->label().' has been added to the forum.'.$entity->toUrl();
 
       communityNotifierEmailQueue($email, $subject, $body);
     }
