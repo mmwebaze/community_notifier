@@ -52,8 +52,11 @@ class CommunityNotifierService implements CommunityNotifierServiceInterface {
 
     return $contentFlags;
   }
-  public function flag($flagId, $flaggedEntityId, Request $request, array $entities = NULL){
-   $destination = $this->destination($request->get('destination'));
+  public function flag($flagId, $flaggedEntityId, Request $request = NULL, array $entities = NULL){
+    $destination = 'node';
+    if ($request != NULL){
+      $destination = $this->destination($request->get('destination'));
+    }
 
     switch($destination){
       case 'node':
@@ -107,7 +110,7 @@ class CommunityNotifierService implements CommunityNotifierServiceInterface {
   public function getNotificationEntitiesById($flaggedEntityId, $ownerId, $condition = '!='){
     $storage = $this->entityTypeManager->getStorage('community_notifier_frequency');
     $ids = $storage->getQuery()
-      ->condition('entity_id', $flaggedEntityId, '=')
+      ->condition('entity_id', $flaggedEntityId, $condition)
       ->condition('user_id', $ownerId, $condition)
       ->execute();
     $notifierEntities = $storage->loadMultiple($ids);
@@ -299,6 +302,12 @@ class CommunityNotifierService implements CommunityNotifierServiceInterface {
       'link_type' => 'reload',
     ])->save();*/
     Flag::create($parameters)->save();
+  }
+  public function getFlagEntityById($flagId){
+    $storage = $this->entityTypeManager->getStorage('flag');
+    $ids = $storage->getQuery()->condition('id', $flagId, '=')->execute();
+    $flagEntity = $storage->loadMultiple($ids);
+    return current($flagEntity);
   }
   public function getCurrentUser(){
     return $this->currentUser->id();
