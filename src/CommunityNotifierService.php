@@ -55,7 +55,9 @@ class CommunityNotifierService implements CommunityNotifierServiceInterface {
   public function flag($flagId, $flaggedEntityId, Request $request = NULL, array $entities = NULL){
     $destination = 'node';
     if ($request != NULL){
-      $destination = $this->destination($request->get('destination'));
+      if ($request->get('destination') != 'node')
+      //$destination = $this->destination($request->get('destination'));
+      $destination = 'taxonomy_term';
     }
 
     switch($destination){
@@ -230,19 +232,30 @@ class CommunityNotifierService implements CommunityNotifierServiceInterface {
     return current($flag);
   }
   private function destination($destination){
+    if ($destination == 'forum'){
+      return 'taxonomy_term';
+    }
     $destination_parameters = explode('/', $destination);
     $destination = count($destination_parameters) == 1 ? $destination :  $destination_parameters[0].'_'.$destination_parameters[1];
     $destination = str_replace('/', '_', $destination);
 
     return $destination;
   }
-  private function deleteSubscriptions($flaggedEntityId, $flagId, $userId){
+  public function deleteSubscriptions($flaggedEntityId, $flagId = NULL, $userId = NULL){
     $storage = $this->entityTypeManager->getStorage('community_notifier_frequency');
-    $ids = $storage->getQuery()
+    $query = $storage->getQuery()->condition('entity_id', $flaggedEntityId, '=');
+    if ($flagId){
+      $query->condition('flag_id', $flagId, '=');
+    }
+    if ($userId){
+      $query->condition('user_id', $userId, '=');
+    }
+    $ids = $query->execute();
+    /*$ids = $storage->getQuery()
       ->condition('entity_id', $flaggedEntityId, '=')
       ->condition('flag_id', $flagId, '=')
       ->condition('user_id', $userId, '=')
-      ->execute();
+      ->execute();*/
 
     foreach ($storage->loadMultiple($ids) as $entity){
       $entity->delete();

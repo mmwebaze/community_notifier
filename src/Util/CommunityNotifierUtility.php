@@ -33,7 +33,7 @@ class CommunityNotifierUtility {
       return [$start, $end];
     }
   }
-  public static function mergeComments(array $comments){
+  public static function mergeBodies(array $comments){
     $bodyTemp = [];
     $messageSettings = \Drupal::service('config.factory')->getEditable('community_notifier.settings')->get('settings.messages');
     $length = $messageSettings['length'];

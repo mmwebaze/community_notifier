@@ -8,6 +8,7 @@
 use Drupal\Core\Routing\RouteMatchInterface;
 use Drupal\comment\CommentInterface;
 use \Drupal\Core\Form\FormStateInterface;
+use \Drupal\community_notifier\Util\CommunityNotifierUtility;
 
 define("DAILY", 86400);
 define("WEEKLY", 604800);
@@ -227,7 +228,7 @@ function community_notifier_cron(){
   if (\Drupal::time()->getRequestTime() >= $next_weekly_execution){
     $comments = \Drupal::service('community_notifier.nodeflags')->getComments('weekly');
     foreach ($comments as $comment){
-      $body = \Drupal\community_notifier\Util\CommunityNotifierUtility::mergeComments($comment['comments']);
+      $body = \Drupal\community_notifier\Util\CommunityNotifierUtility::mergeBodies($comment['comments']);
       communityNotifierEmailQueue($comment['email'], $comment['subject'], $body);
     }
     \Drupal::state()->set('community_notifier.weekly_next_execution', \Drupal::time()->getRequestTime() + $weekly_interval);
@@ -249,6 +250,11 @@ function community_notifier_node_insert(Drupal\Core\Entity\EntityInterface $enti
     $currentUserId = \Drupal::currentUser()->id();
     $notificationEntities = \Drupal::service('community_notifier.nodeflags')->getNotificationEntitiesByForum($term_id);
 
+    $nodeBodies = [];
+    $nodeBody['body'] = $entity->get('body')->value;
+    array_push($nodeBodies, $nodeBody);
+    $body = CommunityNotifierUtility::mergeBodies($nodeBodies);
+
     foreach ($notificationEntities as $notificationEntity){
       $subscribedUser = $notificationEntity->getOwner();
       //checks if current topic creater is subscribed to forum
@@ -257,8 +263,7 @@ function community_notifier_node_insert(Drupal\Core\Entity\EntityInterface $enti
         \Drupal::service('community_notifier.nodeflags')->flag($flagEntity->id(), $entity->id());
       }
       $email = $subscribedUser->getEmail();
-      $subject = $notificationEntity->getFlaggedEntityName().' has new topic';
-      $body = 'New topic '.$entity->label().' has been added to the forum.';
+      $subject = 'Forum: '.$notificationEntity->getFlaggedEntityName().' has new topic';
 
       communityNotifierEmailQueue($email, $subject, $body);
     }
@@ -273,5 +278,25 @@ function community_notifier_module_implements_alter(&$implementations, $hook) {
     $group = $implementations['community_notifier'];
     unset($implementations['community_notifier']);
     $implementations['community_notifier'] = $group;
+  }
+}
+
+/**
+ * Implements hook_entity_predelete().
+ */
+function community_notifier_entity_predelete(Drupal\Core\Entity\EntityInterface $entity){
+  $bundle = $entity->bundle();
+
+  if ($bundle == 'forum' || $bundle == 'forums' || $bundle == 'article'){
+    $communityService = \Drupal::service('community_notifier.nodeflags');
+    if ($bundle == 'forums'){
+      $entities = \Drupal::service('community_notifier.nodeflags')->getForumTopics($entity->id());
+      $communityService->deleteSubscriptions($entity->id());
+      foreach ($entities as $ent){
+        $communityService->deleteSubscriptions($ent->id());
+      }
+    }
+
+    $communityService->deleteSubscriptions($entity->id());
   }
 }
