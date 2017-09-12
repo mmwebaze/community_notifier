@@ -174,6 +174,9 @@ function community_notifier_form_alter(&$form, FormStateInterface $form_state, $
   }
 }
 
+/**
+ * Implements hook_form_submit().
+ */
 function community_notifier_user_from_submit(array  $form, FormStateInterface $form_state){
 
   $subscriptions = $form_state->getValue('table');
@@ -190,10 +193,17 @@ function community_notifier_user_from_submit(array  $form, FormStateInterface $f
   }
 }
 
+/**
+ * Adds email to queue
+ *
+ * @param string $to
+ *   Receipient email.
+ * @param string $subject
+ *   Email subject.
+ * @param string $message
+ *   Email body message.
+ */
 function communityNotifierEmailQueue($to, $subject, $message) {
-  /*$data['to'] = 'amacevitt@drupal.local';
-  $data['subject'] = 'Testing queue system';
-  $data['message'] = 'This is message of testing';*/
   $data['to'] = $to;
   $data['subject'] = $subject;
   $data['message'] = $message;
@@ -239,33 +249,36 @@ function community_notifier_cron(){
  * Implements hook_ENTITY_TYPE_insert().
  */
 function community_notifier_node_insert(Drupal\Core\Entity\EntityInterface $entity){
-  $forumService = \Drupal::service('forum_manager');
-  $isForumType = $forumService->checkNodeType($entity);
+  $moduleHandler = \Drupal::service('module_handler');
+  if ($moduleHandler->moduleExists('forum')){
+    $forumService = \Drupal::service('forum_manager');
+    $isForumType = $forumService->checkNodeType($entity);
 
-  if ($isForumType){
-    $forum_index_storage = \Drupal::service('forum.index_storage');
-    $term_id = $forum_index_storage->getOriginalTermId($entity);
-    $flagEntity = \Drupal::service('community_notifier.nodeflags')->getFlagEntityById('subscribe');
+    if ($isForumType){
+      $forum_index_storage = \Drupal::service('forum.index_storage');
+      $term_id = $forum_index_storage->getOriginalTermId($entity);
+      $flagEntity = \Drupal::service('community_notifier.nodeflags')->getFlagEntityById('subscribe');
 
-    $currentUserId = \Drupal::currentUser()->id();
-    $notificationEntities = \Drupal::service('community_notifier.nodeflags')->getNotificationEntitiesByForum($term_id);
+      $currentUserId = \Drupal::currentUser()->id();
+      $notificationEntities = \Drupal::service('community_notifier.nodeflags')->getNotificationEntitiesByForum($term_id);
 
-    $nodeBodies = [];
-    $nodeBody['body'] = $entity->get('body')->value;
-    array_push($nodeBodies, $nodeBody);
-    $body = CommunityNotifierUtility::mergeBodies($nodeBodies);
+      $nodeBodies = [];
+      $nodeBody['body'] = $entity->get('body')->value;
+      array_push($nodeBodies, $nodeBody);
+      $body = CommunityNotifierUtility::mergeBodies($nodeBodies);
 
-    foreach ($notificationEntities as $notificationEntity){
-      $subscribedUser = $notificationEntity->getOwner();
-      //checks if current topic creater is subscribed to forum
-      if ($currentUserId == $subscribedUser->id()){
-        \Drupal::service('flag')->flag($flagEntity, $entity, \Drupal::currentUser());
-        \Drupal::service('community_notifier.nodeflags')->flag($flagEntity->id(), $entity->id());
+      foreach ($notificationEntities as $notificationEntity){
+        $subscribedUser = $notificationEntity->getOwner();
+        //checks if current topic creater is subscribed to forum
+        if ($currentUserId == $subscribedUser->id()){
+          \Drupal::service('flag')->flag($flagEntity, $entity, \Drupal::currentUser());
+          \Drupal::service('community_notifier.nodeflags')->flag($flagEntity->id(), $entity->id());
+        }
+        $email = $subscribedUser->getEmail();
+        $subject = 'Forum: '.$notificationEntity->getFlaggedEntityName().' has new topic';
+
+        communityNotifierEmailQueue($email, $subject, $body);
       }
-      $email = $subscribedUser->getEmail();
-      $subject = 'Forum: '.$notificationEntity->getFlaggedEntityName().' has new topic';
-
-      communityNotifierEmailQueue($email, $subject, $body);
     }
   }
 }

@@ -4,6 +4,8 @@
  */
 function community_notifier_install() {
   $flag_ids = ['subscribe', 'subscribe_taxonomy'];
+  $moduleHandler = \Drupal::service('module_handler');
+
   $subscribe_taxonomy = [
     'id' => 'subscribe_taxonomy',
     'label' => 'subscribe taxonomy',
@@ -43,7 +45,14 @@ function community_notifier_install() {
 
     if ($numberFlags == 0){
       foreach ($parameters as $parameter){
-        $notifierService->createFlag($parameter);
+        if ($parameter == 'subscribe_taxonomy'){
+          if ($moduleHandler->moduleExists('forum')){
+            $notifierService->createFlag($parameter);
+          }
+        }
+        else{
+          $notifierService->createFlag($parameter);
+        }
       }
     }
     else{
@@ -54,22 +63,16 @@ function community_notifier_install() {
         }
       }
       foreach ($flag_ids as $flag_id){
-        $notifierService->createFlag($parameters[$flag_id]);
+        if ($flag_id == 'subscribe_taxonomy'){
+          if ($moduleHandler->moduleExists('forum')){
+            $notifierService->createFlag($parameters[$flag_id]);
+          }
+        }
+        else{
+          $notifierService->createFlag($parameters[$flag_id]);
+        }
       }
     }
-    /*\Drupal\flag\Entity\Flag::create([
-      'id' => 'subscribe',
-      'label' => 'subscribe',
-      'langcode' => 'en',
-      'status' => TRUE,
-      'bundles' => ['node'],
-      'entity_type' => 'node',
-      'global' => FALSE,
-      'flag_short' => 'subscribe to this item',
-      'unflag_short' => 'unsubscribe  to this item',
-      'flag_type' => 'entity:node',
-      'link_type' => 'reload',
-    ])->save();*/
   }
 }
 
@@ -77,5 +80,14 @@ function community_notifier_install() {
  * Implements hook_uninstall.
  */
 function community_notifier_uninstall() {
+  /*$communityNotifierFrequencies = \Drupal\community_notifier\Entity\CommunityNotifierFrequency::loadMultiple();
 
+  if($communityNotifierFrequencies){
+    try{
+      \Drupal::entityTypeManager()->getStorage('community_notifier_frequency')->delete($communityNotifierFrequencies);
+    }catch (\Drupal\Core\Entity\Exception\NoCorrespondingEntityClassException $e) {
+      print($e->getMessage());
+    }
+
+  }*/
 }

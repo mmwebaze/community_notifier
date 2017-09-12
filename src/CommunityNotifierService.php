@@ -10,6 +10,7 @@ use Drupal\Core\Session\AccountInterface;
 use Drupal\flag\Entity\Flag;
 use Drupal\flag\FlagService;
 use Symfony\Component\HttpFoundation\Request;
+use Drupal\Core\Extension\ModuleHandler;
 
 /**
  * Class CommunityNotifierService.
@@ -25,6 +26,7 @@ class CommunityNotifierService implements CommunityNotifierServiceInterface {
   private $currentUser;
   private $configFactory;
   private $connection;
+  private $moduleHandler;
   /*
    * @var EntityTypeManagerInterface
    * */
@@ -32,12 +34,14 @@ class CommunityNotifierService implements CommunityNotifierServiceInterface {
   /**
    * Constructs a new CommunityNotifierService object.
    */
-  public function __construct(FlagService $flag, AccountInterface $current_user, EntityTypeManagerInterface $entity_type_manager, ConfigFactory $config_factory, Connection $connection) {
+  public function __construct(FlagService $flag, AccountInterface $current_user, EntityTypeManagerInterface $entity_type_manager,
+                              ConfigFactory $config_factory, Connection $connection, ModuleHandler $module_handler) {
     $this->flagService = $flag;
     $this->currentUser = $current_user;
     $this->entityTypeManager = $entity_type_manager;
     $this->configFactory = $config_factory;
     $this->connection = $connection;
+    $this->moduleHandler = $module_handler;
   }
   public function getFlaggableEntityTypes(){
     $contentFlags = [];
@@ -208,18 +212,21 @@ class CommunityNotifierService implements CommunityNotifierServiceInterface {
     return current($userNotificationEntity);
   }
   public function getForumTopics($tid){
-    $query = $this->connection->select('forum_index', 'f')
-      ->fields('f')
-      ->condition('f.tid', $tid);
-    $result = $query->execute();
-    $nids = [];
-    foreach ($result as $record) {
-      $nids[] = $record->nid;
+    if ($this->moduleHandler->moduleExists('forum')){
+      $query = $this->connection->select('forum_index', 'f')
+        ->fields('f')
+        ->condition('f.tid', $tid);
+      $result = $query->execute();
+      $nids = [];
+      foreach ($result as $record) {
+        $nids[] = $record->nid;
+      }
+      if ($nids) {
+        $nodes = $this->entityTypeManager->getStorage('node')->loadMultiple($nids);
+        return $nodes;
+      }
     }
-    if ($nids) {
-       $nodes = $this->entityTypeManager->getStorage('node')->loadMultiple($nids);
-      return $nodes;
-    }
+
     return [];
   }
   public function getSubscribeFlag(){
