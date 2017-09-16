@@ -313,3 +313,45 @@ function community_notifier_entity_predelete(Drupal\Core\Entity\EntityInterface 
     $communityService->deleteSubscriptions($entity->id());
   }
 }
+function community_notifier_views_data_alter(array &$data) {
+ //var_dump(json_encode(array_keys($data['search_api_index_aidsfree_index']), 1));die();
+
+  $data['search_api_index_aidsfree_index']['flagging'] = array(
+    'title' => t('Flagging'),
+    'help' => t('More information about the relationship'),
+
+    'relationship' => array(
+      'group' => 'Flag',
+      // Views name of the table being joined to from foo.
+      'base' => 'flagging',
+      // Database field name in example_table for the join.
+      'base field' => 'entity_id',
+      // Real database field name in foo for the join, to override
+      // 'unique_dummy_name'.
+      'field' => 'nid',
+      // ID of relationship handler plugin to use.
+      'id' => 'standard',
+      'label' => t('Default label for relationship'),
+    ),
+  );
+
+  /*$data['search_api_db_aidsfree_index']['nid_custom'] = array(
+    'title' => t('Flagging'),
+    'help' => t('More information about the relationship'),
+
+    'relationship' => array(
+      // Views name of the table being joined to from foo.
+      'base' => 'flagging',
+      // Database field name in example_table for the join.
+      'base field' => 'entity_id',
+      // Real database field name in foo for the join, to override
+      // 'unique_dummy_name'.
+      'field' => 'nid',
+      // ID of relationship handler plugin to use.
+      'id' => 'standard',
+      'label' => t('Default label for relationship'),
+    ),
+  );*/
+//var_dump($data['search_api_index_aidsfree_index']);die();
+
+}
