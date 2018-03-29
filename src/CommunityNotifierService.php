@@ -103,17 +103,33 @@ class CommunityNotifierService implements CommunityNotifierServiceInterface {
 
   /**
    * @param $flaggedEntityId
-   * @return an array of CommunityNotifierFrequency entities with a specified flaggedEntityId.
+   * @param $ownerId
+   * @return an array of CommunityNotifierFrequency entities with a specified flaggedEntityId and owned or not by
+   * $ownerId depending on the condition.
    */
   public function getNotificationEntitiesById($flaggedEntityId, $ownerId, $condition = '!='){
     $storage = $this->entityTypeManager->getStorage('community_notifier_frequency');
     $ids = $storage->getQuery()
-      ->condition('entity_id', $flaggedEntityId, $condition)
-      ->condition('user_id', $ownerId, $condition)
+      ->condition('entity_id', $flaggedEntityId, '=')
+    // daniel commented this out  ->condition('user_id', $ownerId, $condition)
       ->execute();
     $notifierEntities = $storage->loadMultiple($ids);
 
     return $notifierEntities;
+  }
+
+    /**
+     * @param $flaggedEntityId
+     * @return an array of CommunityNotifierFrequency entities with a specified flaggedEntityId
+     */
+  public function getFlaggedNotificationEntities($flaggedEntityId){
+      $storage = $this->entityTypeManager->getStorage('community_notifier_frequency');
+      $ids = $storage->getQuery()
+          ->condition('entity_id', $flaggedEntityId, '=')
+          ->execute();
+      $notifierEntities = $storage->loadMultiple($ids);
+
+      return $notifierEntities;
   }
   public function getEntityById($nodeId, $enityType = 'node'){
     $entities = $this->entityTypeManager->getStorage($enityType)->loadMultiple([$nodeId]);
@@ -176,9 +192,10 @@ class CommunityNotifierService implements CommunityNotifierServiceInterface {
       $subject = '';
 
       foreach ($notificationComments as $notificationComment){
-        $subject = $notificationComment->getCommentedEntity()->label();
+        $subject = $notificationComment->getCommentedEntity()->get('title')->value;
         $temp = [];
         //$temp['subject'] = $notificationComment->getSubject();
+        $temp['id'] = $notificationComment->id();
         $temp['body'] = $notificationComment->get('comment_body')->value;
         $temp['created'] = date('Y-m-d', $notificationComment->get('created')->value);
         array_push($notifiableComments, $temp);

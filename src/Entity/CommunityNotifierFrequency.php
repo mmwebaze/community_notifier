@@ -239,7 +239,7 @@ class CommunityNotifierFrequency extends ContentEntityBase implements CommunityN
       ->setLabel(t('Entity Name'))
       ->setDescription(t('The flagged entity name.'))
       ->setSettings([
-        'max_length' => 50,
+        'max_length' => 255,
         'text_processing' => 0,
       ])
       ->setReadOnly(TRUE)

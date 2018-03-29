@@ -5,6 +5,7 @@
  * Contains community_notifier.module.
  */
 
+use Drupal\Core\Database\Database;
 use Drupal\Core\Routing\RouteMatchInterface;
 use Drupal\comment\CommentInterface;
 use \Drupal\Core\Form\FormStateInterface;
@@ -45,21 +46,42 @@ function community_notifier_theme() {
  */
 function community_notifier_comment_insert(CommentInterface $comment) {
   $commentedEntityId = $comment->getCommentedEntityId();
-  $notificationEntities = \Drupal::service('community_notifier.nodeflags')->getNotificationEntitiesById($commentedEntityId,
-    \Drupal::currentUser()->id(), '=');
-  //$currentUser = \Drupal::currentUser()->getEmail();
+  $notificationEntities = \Drupal::service('community_notifier.nodeflags')->getFlaggedNotificationEntities($commentedEntityId);
+
+  $moduleHandler = \Drupal::service('module_handler');
+  if ($moduleHandler->moduleExists('forum')){
+
+      $forumService = \Drupal::service('forum_manager');
+      $isForumType = $forumService->checkNodeType($comment->getCommentedEntity());
+      if ($isForumType){
+          $forum_index_storage = \Drupal::service('forum.index_storage');
+          $term_id = $forum_index_storage->getOriginalTermId($comment->getCommentedEntity());
+          $term = \Drupal\taxonomy\Entity\Term::load($term_id);
+          $forumName = $term->getName();
+      }
+  }
+
+  $base_url = \Symfony\Component\HttpFoundation\Request::createFromGlobals()->getSchemeAndHttpHost();
+  $link = $base_url.'/node/'.$commentedEntityId.'#comment-'.$comment->id();
 
   foreach ($notificationEntities as $notificationEntity) {
     $frequency = $notificationEntity->getFrequency();
 
+      $messageBody = '<p>'.$comment->getOwner()->getAccountName().' commented on '.
+          $comment->getCommentedEntity()->getOwner()->getUsername().' post in '.$forumName.': '
+          .$comment->getCommentedEntity()->get('title')->value.'</p><p>'.$comment->get('comment_body')->value.'</p> <p>'.$link.'</p>'.
+          '<p>~~~To post a comment on this post via email, reply to this email.~~~</p>';
+
+      $subject = 'RRHO: '. $comment->getCommentedEntity()->get('title')->value;
+
     if ($frequency == 'immediately'){
       community_notifier_emailer('community_notifier', 'comment_insert_alert', $notificationEntity->getOwner()->getEmail(),
-        $comment->getSubject(), $comment->get('comment_body')->value, $notificationEntity->getOwner()->getUsername());
+          $subject, $messageBody, $notificationEntity->getOwner()->getUsername(), $comment->getCommentedEntity()->id());
     }
   }
 }
 /**
- * Implements hook_theme().
+ * Implements hook_mail().
  */
 function community_notifier_mail($key, &$message, $params) {
   $options = array(
@@ -68,17 +90,29 @@ function community_notifier_mail($key, &$message, $params) {
 
   switch ($key) {
     case 'comment_insert_alert':
-      $message['from'] = \Drupal::config('system.site')->get('mail');
+      $fromEmail = reformatEmail(\Drupal::config('system.site')->get('mail'), $params['comment_id']);
+      $message['from'] = $fromEmail;
+      $message['reply-to'] = $fromEmail;
       $message['subject'] = t('@title', array('@title' => $params['subject']), $options);
       $message['body'][] = $params['message'];
       break;
     case 'query_mail':
-      $message['from'] = \Drupal::config('system.site')->get('mail');
+      $fromEmail = reformatEmail(\Drupal::config('system.site')->get('mail'), $params['entity_id']);
+      $message['from'] = $fromEmail;
+      $message['reply-to'] = $fromEmail;
       $message['subject'] = t('@title', array('@title' => $params['subject']));
       $message['body'][] = $params['message'];
       break;
   }
 }
+
+/**
+ * Implements hook_mail_alter().
+ */
+//function community_notifier_mail_alter(&$message) {
+//  $message['body'][] = $message['params']['message'];
+//  $message['from'] = $message['params']['from'];
+//}
 /**
  * @param $module see hook_mail documentation.
  * @param $key see hook_mail documentation.
@@ -87,14 +121,17 @@ function community_notifier_mail($key, &$message, $params) {
  * @param $message see hook_mail documentation.
  * @param $username drupal username of entity receiving the email.
  */
-function community_notifier_emailer($module, $key, $to, $subject, $message, $username) {
+function community_notifier_emailer($module, $key, $to, $subject, $message, $username, $commentId) {
   $mailManager = \Drupal::service('plugin.manager.mail');
+  $fromEmail = reformatEmail(\Drupal::config('system.site')->get('mail'), $commentId);
   $params['message'] = $message;
   $params['subject'] = $subject;
+  $params['comment_id'] = $commentId;
+  $params['from'] = $fromEmail;
   $langcode = \Drupal::currentUser()->getPreferredLangcode();//should be changed to system lang
   $result = $mailManager->mail($module, $key, $to, $langcode, $params, NULL, true);
   if ($result['result'] !== true) {
-    \Drupal::logger('community_notifier')->error(t('There was a problem sending an email to user '.$username));
+    \Drupal::logger('smtp')->error(t('There was a problem sending an email to user '.$username));
   }
 }
 /**
@@ -103,7 +140,10 @@ function community_notifier_emailer($module, $key, $to, $subject, $message, $use
 function community_notifier_form_alter(&$form, FormStateInterface $form_state, $form_id) {
   switch($form_id){
     case 'user_form':
-      $notEntities = \Drupal::service('community_notifier.nodeflags')->getUserNotificationEntities(\Drupal::currentUser()->id());
+      $form_object = $form_state->getFormObject();
+      $entity = $form_object->getEntity();
+      $notEntities = \Drupal::service('community_notifier.nodeflags')->getUserNotificationEntities($entity->id());
+      
       $dropdown_array = [
         'immediately' => 'immediately',
         'daily' => 'daily',
@@ -203,22 +243,26 @@ function community_notifier_user_from_submit(array  $form, FormStateInterface $f
  * @param string $message
  *   Email body message.
  */
-function communityNotifierEmailQueue($to, $subject, $message) {
+function communityNotifierEmailQueue($to, $subject, $message, $id) {
   $data['to'] = $to;
   $data['subject'] = $subject;
   $data['message'] = $message;
+  $data['entity_id'] = $id;
 
   $queue_factory = \Drupal::service('queue');
   $queue = $queue_factory->get('email_queue');
   $queue->createQueue();
   $queue->createItem($data);
 }
+
 /**
  * Implements hook_cron().
+ *
+ * @param \Drupal\Core\Entity\EntityInterface $entity
  */
 function community_notifier_cron(){
-  $daily_interval = 60; //DAILY;
-  $weekly_interval = 120; //WEEKLY;
+  $daily_interval = DAILY;
+  $weekly_interval = WEEKLY;
 
   $next_daily_execution  = \Drupal::state()->get('community_notifier.daily_next_execution');
   $next_daily_execution = !empty($next_daily_execution) ? $next_daily_execution : 0;
@@ -226,8 +270,12 @@ function community_notifier_cron(){
   //executes daily
   if (\Drupal::time()->getRequestTime() >= $next_daily_execution){
     $comments = \Drupal::service('community_notifier.nodeflags')->getComments('daily');
+
+   // $inmailCommentId = "[comment][#{$entity->id()}]";
+   // $subject = 'RRHO: New topic in '. $entity->label() . ' ID: ' . $inmailCommentId;
+
     foreach ($comments as $comment){
-      communityNotifierEmailQueue($comment['email'], $comment['comments']['subject'], $comment['comments']['body']);
+      communityNotifierEmailQueue($comment['email'], $comment['subject'], $comment['comments']['body'], $comment['comments']['id']);
     }
     \Drupal::state()->set('community_notifier.daily_next_execution', \Drupal::time()->getRequestTime() + $daily_interval);
   }
@@ -239,7 +287,7 @@ function community_notifier_cron(){
     $comments = \Drupal::service('community_notifier.nodeflags')->getComments('weekly');
     foreach ($comments as $comment){
       $body = \Drupal\community_notifier\Util\CommunityNotifierUtility::mergeBodies($comment['comments']);
-      communityNotifierEmailQueue($comment['email'], $comment['subject'], $body);
+      communityNotifierEmailQueue($comment['email'], $comment['subject'], $body, $comment['comments']['id']);
     }
     \Drupal::state()->set('community_notifier.weekly_next_execution', \Drupal::time()->getRequestTime() + $weekly_interval);
   }
@@ -247,6 +295,8 @@ function community_notifier_cron(){
 
 /**
  * Implements hook_ENTITY_TYPE_insert().
+ *
+ * @param \Drupal\Core\Entity\EntityInterface $entity
  */
 function community_notifier_node_insert(Drupal\Core\Entity\EntityInterface $entity){
   $moduleHandler = \Drupal::service('module_handler');
@@ -267,17 +317,27 @@ function community_notifier_node_insert(Drupal\Core\Entity\EntityInterface $enti
       array_push($nodeBodies, $nodeBody);
       $body = CommunityNotifierUtility::mergeBodies($nodeBodies);
 
+        $base_url = \Symfony\Component\HttpFoundation\Request::createFromGlobals()->getSchemeAndHttpHost();
+        $link = $base_url.'/node/'.$entity->id();
+
       foreach ($notificationEntities as $notificationEntity){
+          $messageBody = '';
         $subscribedUser = $notificationEntity->getOwner();
         //checks if current topic creater is subscribed to forum
         if ($currentUserId == $subscribedUser->id()){
           \Drupal::service('flag')->flag($flagEntity, $entity, \Drupal::currentUser());
           \Drupal::service('community_notifier.nodeflags')->flag($flagEntity->id(), $entity->id());
         }
-        $email = $subscribedUser->getEmail();
-        $subject = 'Forum: '.$notificationEntity->getFlaggedEntityName().' has new topic';
 
-        communityNotifierEmailQueue($email, $subject, $body);
+        $messageBody = '<p>' . $entity->getOwner()->getUsername().' added a new post in '.
+            $notificationEntity->getFlaggedEntityName().': '.$entity->getTitle().' </p><p> '.$entity->get('body')->value.
+            '</p><p>'.$link.'</p>';
+
+
+        $email = $subscribedUser->getEmail();
+        $subject = 'RRHO: '. $entity->getTitle();
+        $body = t($messageBody.'<p>~~~To post a comment on this post via email, reply to this email.~~~</p>') /*. $body*/;
+        communityNotifierEmailQueue($email, $subject, $body, $entity->id());
       }
     }
   }
@@ -312,4 +372,8 @@ function community_notifier_entity_predelete(Drupal\Core\Entity\EntityInterface 
 
     $communityService->deleteSubscriptions($entity->id());
   }
+}
+function reformatEmail($emailToReformat, $id){
+    $emailParts = explode('@', $emailToReformat);
+    return  $emailParts[0].'+'.$id.'@'.$emailParts[1];
 }
